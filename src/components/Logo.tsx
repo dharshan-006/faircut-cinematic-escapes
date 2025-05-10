@@ -21,9 +21,6 @@ const Logo: React.FC<LogoProps> = ({ size = 'medium', className = '' }) => {
           <span className="text-3xl font-light">-</span>
           <span className="text-4xl font-bold text-red-500">CUT</span>
         </span>
-        <div className="mt-1 text-xs text-center text-faircut-text/70">
-          No Convenience Fee. Just Movies.
-        </div>
       </div>
     </div>
   );

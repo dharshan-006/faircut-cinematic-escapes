@@ -28,11 +28,14 @@ const SeatSelectionPage: React.FC = () => {
     totalAmount
   } = useBooking();
   
-  // Use useMemo for seats to improve performance
+  // Use state for seats with a proper initialization
   const [seats, setSeats] = useState<Seat[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Use useMemo to compute rows for better performance
   const seatsByRow = useMemo(() => {
+    if (!seats.length) return {};
+    
     return seats.reduce<Record<string, Seat[]>>((acc, seat) => {
       if (!acc[seat.row]) {
         acc[seat.row] = [];
@@ -54,17 +57,28 @@ const SeatSelectionPage: React.FC = () => {
       }
     }
     
-    // Generate seats for this showtime using a more efficient approach
-    if (showtimeId) {
-      // Generate seats in a non-blocking way
-      setTimeout(() => {
-        const generatedSeats = generateSeats(showtimeId);
-        setSeats(generatedSeats);
-      }, 0);
-    }
+    setIsLoading(true);
     
     // Clear any previously selected seats
     clearSelectedSeats();
+    
+    // Generate seats for this showtime
+    if (showtimeId) {
+      try {
+        const generatedSeats = generateSeats(showtimeId);
+        // Sort seats by row and number for consistency
+        generatedSeats.sort((a, b) => {
+          if (a.row !== b.row) return a.row.localeCompare(b.row);
+          return parseInt(a.number) - parseInt(b.number);
+        });
+        setSeats(generatedSeats);
+      } catch (error) {
+        console.error("Error generating seats:", error);
+        toast.error("Failed to load seat map");
+      } finally {
+        setIsLoading(false);
+      }
+    }
   }, [showtimeId, selectedShowtime, setSelectedShowtime, clearSelectedSeats, navigate]);
 
   const handleSeatClick = (seat: Seat) => {
@@ -88,49 +102,39 @@ const SeatSelectionPage: React.FC = () => {
     // Select the seat
     addSeat(seat);
     
-    // Adjacent seat selection logic for better UX
+    // Only try to select adjacent seats if this is the first selection
     if (numberOfSeats > 1 && selectedSeats.length === 0) {
-      // Get adjacent seats in the same row that are available
+      // Get available seats in the same row
       const sameRowSeats = seats.filter(s => 
         s.row === seat.row && 
         s.status === 'available' && 
         s.id !== seat.id
       );
       
-      // Sort them by number for proper sequence
-      const seatNumbers = sameRowSeats.map(s => parseInt(s.number));
-      seatNumbers.sort((a, b) => a - b);
+      const currentSeatNumber = parseInt(seat.number);
       
       // Find seats to the right of the selected seat
-      const currentSeatNumber = parseInt(seat.number);
-      const rightSeats = sameRowSeats.filter(s => parseInt(s.number) > currentSeatNumber);
-      rightSeats.sort((a, b) => parseInt(a.number) - parseInt(b.number));
+      const rightSeats = sameRowSeats.filter(s => parseInt(s.number) > currentSeatNumber)
+        .sort((a, b) => parseInt(a.number) - parseInt(b.number));
       
-      // If we don't have enough seats to the right, try to the left
-      if (rightSeats.length < numberOfSeats - 1) {
-        const leftSeats = sameRowSeats.filter(s => parseInt(s.number) < currentSeatNumber);
-        leftSeats.sort((a, b) => parseInt(b.number) - parseInt(a.number)); // Sort in reverse for left side
-        
-        // Select as many seats as needed
-        let seatsToSelect = Math.min(numberOfSeats - 1, rightSeats.length + leftSeats.length);
-        
-        // Add right seats first
-        for (let i = 0; i < rightSeats.length && seatsToSelect > 0; i++) {
-          addSeat(rightSeats[i]);
-          seatsToSelect--;
-        }
-        
-        // Then add left seats if needed
-        for (let i = 0; i < leftSeats.length && seatsToSelect > 0; i++) {
-          addSeat(leftSeats[i]);
-          seatsToSelect--;
-        }
-      } else {
-        // We have enough seats to the right, just add them
-        let seatsToSelect = numberOfSeats - 1;
-        for (let i = 0; i < seatsToSelect; i++) {
-          addSeat(rightSeats[i]);
-        }
+      // Find seats to the left of the selected seat
+      const leftSeats = sameRowSeats.filter(s => parseInt(s.number) < currentSeatNumber)
+        .sort((a, b) => parseInt(b.number) - parseInt(a.number)); // Reverse sort for left side
+      
+      // Calculate how many more seats we need
+      const seatsNeeded = numberOfSeats - 1;
+      let seatsAdded = 0;
+      
+      // Try to add seats from the right first
+      for (let i = 0; i < rightSeats.length && seatsAdded < seatsNeeded; i++) {
+        addSeat(rightSeats[i]);
+        seatsAdded++;
+      }
+      
+      // If we still need more seats, add from the left
+      for (let i = 0; i < leftSeats.length && seatsAdded < seatsNeeded; i++) {
+        addSeat(leftSeats[i]);
+        seatsAdded++;
       }
     }
   };
@@ -150,7 +154,7 @@ const SeatSelectionPage: React.FC = () => {
     navigate('/payment');
   };
 
-  if (!selectedShowtime || !selectedMovie || !selectedTheatre) {
+  if (isLoading || !selectedShowtime || !selectedMovie || !selectedTheatre) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-faircut"></div>
@@ -215,46 +219,40 @@ const SeatSelectionPage: React.FC = () => {
               <p className="text-xs text-faircut-text/50">SCREEN</p>
             </div>
             
-            {/* Seats */}
+            {/* Seats Container */}
             <div className="overflow-x-auto pb-4">
-              {seats.length === 0 ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-faircut"></div>
-                </div>
-              ) : (
-                <div className="max-w-3xl mx-auto">
-                  {Object.entries(seatsByRow).map(([row, rowSeats]) => (
-                    <div key={row} className="flex justify-center mb-2">
-                      <div className="w-6 flex items-center justify-center mr-2 text-faircut-text/70">
-                        {row}
-                      </div>
-                      <div className="flex space-x-1">
-                        {rowSeats.map((seat) => {
-                          const isSelected = selectedSeats.some(s => s.id === seat.id);
-                          let bgColor = 'bg-gray-500 hover:bg-gray-400';
-                          if (seat.status === 'booked') {
-                            bgColor = 'bg-red-500 cursor-not-allowed opacity-70';
-                          } else if (isSelected) {
-                            bgColor = 'bg-faircut hover:bg-faircut-light';
-                          }
-                          
-                          return (
-                            <button
-                              key={seat.id}
-                              onClick={() => handleSeatClick(seat)}
-                              disabled={seat.status === 'booked'}
-                              className={`w-7 h-7 rounded-sm flex items-center justify-center text-xs font-medium text-white ${bgColor} transition-colors`}
-                              title={`Seat ${seat.row}${seat.number} - ₹${seat.price}`}
-                            >
-                              {seat.number}
-                            </button>
-                          );
-                        })}
-                      </div>
+              <div className="max-w-3xl mx-auto">
+                {Object.entries(seatsByRow).map(([row, rowSeats]) => (
+                  <div key={row} className="flex justify-center mb-2">
+                    <div className="w-6 flex items-center justify-center mr-2 text-faircut-text/70">
+                      {row}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="flex space-x-1 flex-wrap">
+                      {rowSeats.map((seat) => {
+                        const isSelected = selectedSeats.some(s => s.id === seat.id);
+                        let bgColor = 'bg-gray-500 hover:bg-gray-400';
+                        if (seat.status === 'booked') {
+                          bgColor = 'bg-red-500 cursor-not-allowed opacity-70';
+                        } else if (isSelected) {
+                          bgColor = 'bg-faircut hover:bg-faircut-light';
+                        }
+                        
+                        return (
+                          <button
+                            key={seat.id}
+                            onClick={() => handleSeatClick(seat)}
+                            disabled={seat.status === 'booked'}
+                            className={`w-7 h-7 rounded-sm flex items-center justify-center text-xs font-medium text-white ${bgColor} transition-colors`}
+                            title={`Seat ${seat.row}${seat.number} - ₹${seat.price}`}
+                          >
+                            {seat.number}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             
             {/* Price notice */}

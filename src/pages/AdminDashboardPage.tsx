@@ -47,9 +47,15 @@ const AdminDashboardPage: React.FC = () => {
     <div className="min-h-screen bg-faircut-bg flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-faircut/20 bg-faircut-accent/90 backdrop-blur-sm">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Logo size="small" />
-            <h1 className="text-lg font-semibold tracking-wider text-faircut-text">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              <span className="text-3xl font-bold tracking-tighter text-faircut-light">
+                FAIR
+                <span className="text-2xl font-light">-</span>
+                <span className="text-3xl font-bold text-red-500">CUT</span>
+              </span>
+            </div>
+            <h1 className="text-lg font-semibold tracking-wider text-faircut-text ml-4">
               Admin Dashboard
             </h1>
           </div>
@@ -222,9 +228,76 @@ const AdminDashboardPage: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-faircut-text/80 text-center py-10">
-                  Showtime management functionality will be implemented in the next phase.
-                </p>
+                <form className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="movie" className="text-faircut-text">Select Movie</Label>
+                      <Select>
+                        <SelectTrigger className="border-faircut/30 bg-black/30 text-faircut-text">
+                          <SelectValue placeholder="Select movie" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-faircut-accent border-faircut/30">
+                          {movies.map(movie => (
+                            <SelectItem key={movie.id} value={movie.id} className="text-faircut-text">
+                              {movie.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="theatre" className="text-faircut-text">Select Theatre</Label>
+                      <Select>
+                        <SelectTrigger className="border-faircut/30 bg-black/30 text-faircut-text">
+                          <SelectValue placeholder="Select theatre" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-faircut-accent border-faircut/30">
+                          {theatres.map(theatre => (
+                            <SelectItem key={theatre.id} value={theatre.id} className="text-faircut-text">
+                              {theatre.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="screen" className="text-faircut-text">Screen</Label>
+                      <Select>
+                        <SelectTrigger className="border-faircut/30 bg-black/30 text-faircut-text">
+                          <SelectValue placeholder="Select screen" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-faircut-accent border-faircut/30">
+                          <SelectItem value="1" className="text-faircut-text">Screen 1</SelectItem>
+                          <SelectItem value="2" className="text-faircut-text">Screen 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="time" className="text-faircut-text">Show Time</Label>
+                      <Input
+                        id="time"
+                        placeholder="e.g. 10:00 AM"
+                        className="border-faircut/30 bg-black/30 text-faircut-text"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="date" className="text-faircut-text">Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        className="border-faircut/30 bg-black/30 text-faircut-text"
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button type="submit" className="w-full bg-faircut hover:bg-faircut-light">
+                    Add Showtime
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

@@ -43,30 +43,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string) => {
     try {
-      // In a real implementation, we would call our Supabase Edge Function to send OTP via email
-      console.log(`Sending OTP to ${email}`);
-      
-      // Generate a 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Store the OTP temporarily in localStorage (in a real app, this should be done server-side)
-      localStorage.setItem(`faircut-otp-${email}`, otp);
-      
-      // This is where we would integrate with our email sending function
-      // For now, we'll simulate this with a toast message
-      toast.success(`OTP sent to ${email}`, {
-        description: "Please check your email"
+      // Call our Supabase Edge Function to send OTP via email
+      const response = await fetch('https://vxjsghlwyidmifdszzfu.supabase.co/functions/v1/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
       
-      // For testing purposes, we'll show the OTP in the console
-      console.log(`Generated OTP: ${otp}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send OTP');
+      }
+      
+      const data = await response.json();
+      
+      // Store the OTP temporarily in localStorage (in a real app, this should be done server-side)
+      localStorage.setItem(`faircut-otp-${email}`, data.otp);
+      
+      toast.success(`OTP sent to ${email}`, {
+        description: "Please check your email inbox and spam folder"
+      });
+      
+      console.log(`OTP for testing: ${data.otp}`);
       
       // Store email temporarily for OTP verification
       sessionStorage.setItem('faircut-pending-email', email);
       
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Failed to send OTP');
+      toast.error('Failed to send OTP: ' + (error instanceof Error ? error.message : 'Unknown error'));
       throw error;
     }
   };
@@ -74,7 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verifyOtp = async (email: string, otp: string): Promise<boolean> => {
     try {
       // In a real app, we would verify the OTP with our backend
-      // For this demo, we'll use the one stored in localStorage
       const storedOtp = localStorage.getItem(`faircut-otp-${email}`);
       
       if (storedOtp === otp) {
