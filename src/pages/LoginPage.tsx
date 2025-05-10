@@ -42,6 +42,7 @@ const LoginPage: React.FC = () => {
       navigate('/verify-otp');
     } catch (error) {
       console.error('Login error:', error);
+      toast.error('Failed to send OTP. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
